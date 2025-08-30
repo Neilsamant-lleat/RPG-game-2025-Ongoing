@@ -217,7 +217,6 @@ def save_game():
     savable_state = {key: game_state[key] for key in SAVABLE_GAME_STATE_KEYS if key in game_state}
     try:
         with open(filename, 'w') as f:
-            # Convert the dictionary to a JSON string and write it to the .txt file
             f.write(json.dumps(savable_state, indent=4))
         print(f"Game saved to {filename}!")
     except Exception as e:
@@ -229,7 +228,6 @@ def load_game(username):
     filename = get_save_filename(username)
     try:
         with open(filename, 'r') as f:
-            # Read the JSON string from the .txt file and parse it
             loaded_state = json.loads(f.read())
         
         default_game_state = get_new_game_state()
@@ -276,7 +274,6 @@ def award_exp(exp_amount):
         sleep(2)
 
 def apply_stance_modifiers(dmg, ret_dmg, current_stance):
-    # Base Stances
     if current_stance == "offensive" or current_stance == "soleil":
         dmg_mult = 1.3 if current_stance == "soleil" else 1.2
         ret_dmg_mult = 1.3 if current_stance == "soleil" else 1.2
@@ -292,7 +289,6 @@ def apply_stance_modifiers(dmg, ret_dmg, current_stance):
     else:
         print("You maintain a Balanced Stance, ready for anything.")
 
-    # Ghost Form Modifiers
     if game_state.get('ghost_form', False):
         if current_stance in ["offensive", "soleil"]:
             dmg = int(dmg * 1.1)
@@ -307,20 +303,17 @@ def apply_stance_modifiers(dmg, ret_dmg, current_stance):
             ret_dmg = int(ret_dmg * 1.05)
             print("The ghost presence subtly shifts your balance.")
 
-    # Gale Sword Modifiers
     if game_state.get('gale_sword', False):
         dmg = int(dmg * 0.95)
         ret_dmg = int(ret_dmg * 0.9)
         print("Your Gale Sword subtly shifts the battlefield to your advantage!")
 
-    # Prism Armor Modifier
     if game_state.get('has_prism_armor', False):
-        ret_dmg = int(ret_dmg * 0.9) # 10% damage reduction
+        ret_dmg = int(ret_dmg * 0.9)
         print("Your Prism Armor glows, deflecting a portion of the incoming damage!")
 
-    # Lune Favor Modifier
     if game_state.get('gauntlet_favor') == 'lune':
-        ret_dmg = int(ret_dmg * 0.95) # 5% damage reduction
+        ret_dmg = int(ret_dmg * 0.95)
 
     return dmg, ret_dmg
 
@@ -348,7 +341,6 @@ def attack_enemy(enemy_name, enemy_hp, attack_name, enemy_ret_range):
         print(f"Error: Attack '{attack_name}' not found.")
         return enemy_hp, False
 
-    # Check Requirements
     if attack_data.get("lobos_req") and not game_state.get('has_lobos_sword', False):
         print(f"You need the Lobos sword to use {attack_data['name']}!")
         return enemy_hp, False
@@ -363,7 +355,6 @@ def attack_enemy(enemy_name, enemy_hp, attack_name, enemy_ret_range):
         print(f"You must be in {required_stance.capitalize()} Stance to use {attack_data['name']}!")
         return enemy_hp, False
     
-    # Check Focus Cost
     cost = attack_data.get("focus_cost", 0)
     if game_state['focus'] < cost:
         print(f"Not enough Focus for {attack_data['name']}! (Requires {cost} Focus)")
@@ -371,8 +362,6 @@ def attack_enemy(enemy_name, enemy_hp, attack_name, enemy_ret_range):
     game_state['focus'] -= cost
     game_state['focus'] = max(0, game_state['focus'])
 
-    # Calculate Damage
-    base_dmg = random.randint(attack_data['dmg_range'][0], attack_data['dmg_range'][1])
     scaled_dmg_min = game_state['player_base_dmg_min'] + attack_data['dmg_range'][0]
     scaled_dmg_max = game_state['player_base_dmg_max'] + attack_data['dmg_range'][1]
     base_dmg = random.randint(scaled_dmg_min, scaled_dmg_max)
@@ -380,7 +369,6 @@ def attack_enemy(enemy_name, enemy_hp, attack_name, enemy_ret_range):
     
     actual_dmg, actual_ret_dmg = apply_stance_modifiers(base_dmg, base_ret_dmg, game_state['stance'])
 
-    # Special Item/Buff Damage Modifiers
     if game_state.get('arcane_sword', False):
         arcane_bonus = random.randint(5, 15)
         actual_dmg += arcane_bonus
@@ -392,18 +380,17 @@ def attack_enemy(enemy_name, enemy_hp, attack_name, enemy_ret_range):
         actual_dmg = int(actual_dmg * 1.5)
         print("BEAST WITHIN: Your attack is ferocious!")
     if game_state.get('gauntlet_favor') == 'soleil':
-        actual_dmg = int(actual_dmg * 1.05) # 5% damage boost
+        actual_dmg = int(actual_dmg * 1.05)
 
     actual_dmg = int(actual_dmg * game_state['enemy_damage_multiplier'])
     
-    # Handle Multi-hit attacks
-    total_dmg_dealt = 0
     if "hits" in attack_data:
         num_hits = attack_data["hits"]
+        total_hit_dmg = 0
         for i in range(num_hits):
             hit_dmg = random.randint(attack_data['dmg_range'][0], attack_data['dmg_range'][1])
-            total_dmg_dealt += hit_dmg
-        actual_dmg += total_dmg_dealt # Add to scaled damage
+            total_hit_dmg += hit_dmg
+        actual_dmg += total_hit_dmg
         print(f"You unleash {attack_data['name']}, landing {num_hits} hits for a total of {actual_dmg} damage!")
     else:
         if attack_data.get("type") != "combo":
@@ -411,13 +398,11 @@ def attack_enemy(enemy_name, enemy_hp, attack_name, enemy_ret_range):
         else:
             print(f"Your combo flows into {attack_data['name']}, striking the {enemy_name} for {actual_dmg} damage!")
 
-    # Clan Buffs (Dojima)
-    if game_state.get('player_clan') == 'dojima' and random.random() < 0.15: # 15% chance
+    if game_state.get('player_clan') == 'dojima' and random.random() < 0.15:
         dojima_bonus_dmg = int(actual_dmg * 0.5)
         actual_dmg += dojima_bonus_dmg
         print(f"The Mark of the Dragon flares! You deal an extra {dojima_bonus_dmg} damage!")
 
-    # Critical Hit Calculation
     crit_chance = 0.05 
     if game_state.get('wolfs_howl_active', False):
         crit_chance += 0.25 
@@ -440,14 +425,12 @@ def attack_enemy(enemy_name, enemy_hp, attack_name, enemy_ret_range):
     print()
     sleep(2)
 
-    # Post-Attack Logic
     if attack_data.get("beowulf_req") and attack_data.get("type") == "attack":
         game_state['last_moves_queue'].append(attack_name)
         if len(game_state['last_moves_queue']) > 3:
             game_state['last_moves_queue'].pop(0)
         enemy_hp = check_for_beowulf_combo(enemy_name, enemy_hp)
 
-    # Handle Effects
     effect = attack_data.get("effect")
     if effect:
         if effect == "bleed_next_turn":
@@ -494,7 +477,6 @@ def attack_enemy(enemy_name, enemy_hp, attack_name, enemy_ret_range):
             print("A spiritual howl echoes, sharpening your instincts! Your critical hit chance is increased!")
         return enemy_hp, True
 
-    # Healing
     if "heal_percent_dmg" in attack_data:
         heal = int(actual_dmg * attack_data["heal_percent_dmg"])
         game_state['hp'] = min(game_state['player_max_hp'], game_state['hp'] + heal)
@@ -504,7 +486,6 @@ def attack_enemy(enemy_name, enemy_hp, attack_name, enemy_ret_range):
         game_state['hp'] = min(game_state['player_max_hp'], game_state['hp'] + heal)
         print(f"You heal for {heal} HP! Your health is now {game_state['hp']}.")
 
-    # Special follow-up effects
     if game_state.get('bleed_next_turn', False):
         bleed_dmg = random.randint(10, 25)
         enemy_hp -= bleed_dmg
@@ -512,7 +493,6 @@ def attack_enemy(enemy_name, enemy_hp, attack_name, enemy_ret_range):
         game_state['bleed_next_turn'] = False
         sleep(2)
     
-    # Enemy Retaliation
     if game_state.get('phased_dodge_active', False):
         print(f"You effortlessly dodge the {enemy_name}'s counter attack!")
         game_state['phased_dodge_active'] = False
@@ -531,25 +511,22 @@ def attack_enemy(enemy_name, enemy_hp, attack_name, enemy_ret_range):
     else:
         game_state['hp'] -= actual_ret_dmg
 
-    # Gain Charge and Focus
     charge_gain = random.randint(attack_data['charge_gain'][0], attack_data['charge_gain'][1])
     game_state['charge'] = min(100, game_state['charge'] + charge_gain)
     
     focus_gain_range = attack_data.get("focus_gain", (0,0))
     focus_gain = random.randint(focus_gain_range[0], focus_gain_range[1])
     if game_state.get('player_clan') == 'ginryu':
-        focus_gain = int(focus_gain * 1.25) # 25% more focus gain
+        focus_gain = int(focus_gain * 1.25)
     if focus_gain > 0:
         game_state['focus'] = min(game_state['max_focus'], game_state['focus'] + focus_gain)
     
-    # Print retaliation and status
     if attack_data.get("type") != "combo":
         print(f"The {enemy_name} counters with a savage blow for {actual_ret_dmg} damage. Your health is now {game_state['hp']}")
         print(f"You gained {charge_gain} ultimate charge. Total charge: {game_state['charge']}.")
         print(f"Current Focus: {game_state['focus']}.")
         print()
     
-    # Elemental Sword Effects
     if game_state.get('flaming_sword', False) and enemy_hp > 0:
         burn_dmg = random.randint(3, 8)
         enemy_hp -= burn_dmg
@@ -565,7 +542,6 @@ def defend(enemy_name, def_type, ret_range, charge_gain_range=(5, 20)):
     _, actual_ret = apply_stance_modifiers(0, base_ret_dmg, current_stance=game_state['stance'])
     action_taken = True
 
-    # Buffs that increase damage taken
     if game_state.get('overdrive_active', False):
         actual_ret = int(actual_ret * 1.5)
         print("OVERDRIVE: The raw power coursing through you makes defense difficult! You take increased damage!")
@@ -863,7 +839,6 @@ def battle_sequence(enemy_type, win_hp_bonus=0, death_hp_reset=None, intro_text=
     else:
         game_state['hp'] = game_state['player_max_hp']
 
-    # Clan Buff (Tojo)
     start_charge = 25 if game_state.get('player_clan') == 'tojo' else 0
     game_state['charge'] = start_charge
     
@@ -879,7 +854,6 @@ def battle_sequence(enemy_type, win_hp_bonus=0, death_hp_reset=None, intro_text=
     game_state['rebound_barrage_remaining_dmg'] = 0
     game_state['bleed_next_turn'] = False
     game_state['last_moves_queue'].clear()
-    mettaton_empowered = False
     print(intro_text if intro_text else enemy_data.get('intro', f"\n--- {enemy_name} Battle! ---"))
     sleep(1)
 
@@ -914,7 +888,6 @@ def battle_sequence(enemy_type, win_hp_bonus=0, death_hp_reset=None, intro_text=
             game_state['rebound_barrage_turns'] = 0
             game_state['rebound_barrage_remaining_dmg'] = 0
             game_state['bleed_next_turn'] = False
-            mettaton_empowered = False
             sleep(1)
             continue
         if enemy_hp <= 0:
@@ -971,60 +944,50 @@ def battle_sequence(enemy_type, win_hp_bonus=0, death_hp_reset=None, intro_text=
             if player_choice == 1:
                 print("Your available attacks:")
                 valid_attack_choices = []
-                current_moveset = []
-                # Determine which moves to show based on weapon
+                current_moveset_ids = []
+                
                 if game_state.get('current_weapon') == 'boots':
-                    current_moveset = [m for m in ALL_PLAYER_ATTACKS if ALL_PLAYER_ATTACKS[m].get('boots_req')]
+                    current_moveset_ids = [m for m, d in ALL_PLAYER_ATTACKS.items() if d.get('boots_req') and d['type'] == 'attack']
                 elif game_state.get('current_weapon') == 'gauntlets':
-                    # --- FIX START ---
-                    # The original code incorrectly checked game_state['player_attack_moveset'].
-                    # This now correctly checks ALL_PLAYER_ATTACKS for any move requiring beowulf gauntlets.
-                    current_moveset = [m for m in ALL_PLAYER_ATTACKS if ALL_PLAYER_ATTACKS[m].get('beowulf_req')]
-                    # --- FIX END ---
-                else: # Fallback to default sword moves
-                    current_moveset = game_state['player_attack_moveset']
+                    current_moveset_ids = [m for m, d in ALL_PLAYER_ATTACKS.items() if d.get('beowulf_req') and d['type'] == 'attack']
+                else:
+                    current_moveset_ids = [m for m in game_state['player_attack_moveset'] if ALL_PLAYER_ATTACKS[m]['type'] == 'attack']
 
-                for i, attack_name in enumerate(current_moveset):
+                for i, attack_name in enumerate(current_moveset_ids):
                     attack_data = ALL_PLAYER_ATTACKS[attack_name]
-                    if attack_data['type'] == 'attack':
-                        print(f"{i+1}. {attack_data['name']} (Cost: {attack_data['focus_cost']} Focus) - {attack_data['desc']}")
-                        valid_attack_choices.append(i + 1)
+                    print(f"{i+1}. {attack_data['name']} (Cost: {attack_data['focus_cost']} Focus) - {attack_data['desc']}")
+                    valid_attack_choices.append(i + 1)
                 
                 if not valid_attack_choices:
                     print("You have no attacks equipped for this weapon!")
                     continue
                 
                 attack_index = get_player_input("Choose your attack: ", valid_choices=valid_attack_choices) - 1
-                chosen_attack_name = current_moveset[attack_index]
+                chosen_attack_name = current_moveset_ids[attack_index]
                 enemy_hp, action_taken_this_turn = attack_enemy(enemy_name, enemy_hp, chosen_attack_name, default_ret_range)
             elif player_choice == 2:
                 print("Your available special moves:")
                 valid_special_choices = []
-                current_moveset = []
-                # Determine which moves to show based on weapon
+                current_moveset_ids = []
+
                 if game_state.get('current_weapon') == 'boots':
-                    current_moveset = [m for m in ALL_PLAYER_ATTACKS if ALL_PLAYER_ATTACKS[m].get('boots_req')]
+                    current_moveset_ids = [m for m, d in ALL_PLAYER_ATTACKS.items() if d.get('boots_req') and d['type'] == 'special']
                 elif game_state.get('current_weapon') == 'gauntlets':
-                    # --- FIX START ---
-                    # The original code incorrectly checked game_state['player_special_moveset'].
-                    # This now correctly checks ALL_PLAYER_ATTACKS for any move requiring beowulf gauntlets.
-                    current_moveset = [m for m in ALL_PLAYER_ATTACKS if ALL_PLAYER_ATTACKS[m].get('beowulf_req')]
-                    # --- FIX END ---
-                else: # Fallback to default sword moves
-                    current_moveset = game_state['player_special_moveset']
+                    current_moveset_ids = [m for m, d in ALL_PLAYER_ATTACKS.items() if d.get('beowulf_req') and d['type'] == 'special']
+                else:
+                    current_moveset_ids = [m for m in game_state['player_special_moveset'] if ALL_PLAYER_ATTACKS[m]['type'] == 'special']
                 
-                for i, attack_name in enumerate(current_moveset):
+                for i, attack_name in enumerate(current_moveset_ids):
                     attack_data = ALL_PLAYER_ATTACKS[attack_name]
-                    if attack_data['type'] == 'special':
-                        print(f"{i+1}. {attack_data['name']} (Cost: {attack_data['focus_cost']} Focus) - {attack_data['desc']}")
-                        valid_special_choices.append(i + 1)
+                    print(f"{i+1}. {attack_data['name']} (Cost: {attack_data['focus_cost']} Focus) - {attack_data['desc']}")
+                    valid_special_choices.append(i + 1)
 
                 if not valid_special_choices:
                     print("You have no special moves equipped for this weapon!")
                     continue
                 
                 attack_index = get_player_input("Choose your special move: ", valid_choices=valid_special_choices) - 1
-                chosen_attack_name = current_moveset[attack_index]
+                chosen_attack_name = current_moveset_ids[attack_index]
                 enemy_hp, action_taken_this_turn = attack_enemy(enemy_name, enemy_hp, chosen_attack_name, default_ret_range)
             elif player_choice == 3:
                 defense_choice = get_player_input("""Choose your defense:
@@ -1079,44 +1042,16 @@ def customize_moveset():
     print("\n--- Customize Your Moveset ---")
     print("You can select up to 5 Basic Attacks and 5 Special Moves for each weapon style.")
     
-    # --- Gauntlet Customization ---
     if game_state.get('has_beowulf_gauntlets'):
         print("\n--- Customizing Gauntlets ---")
-        available_attacks = []
-        available_specials = []
-        for attack_id, data in ALL_PLAYER_ATTACKS.items():
-            if data.get('beowulf_req'):
-                if data.get('type') == 'attack':
-                    available_attacks.append((attack_id, data))
-                elif data.get('type') == 'special':
-                    available_specials.append((attack_id, data))
-        
-        new_attack_moveset = []
-        while len(new_attack_moveset) < 5:
-            print("\n--- Select Gauntlet Basic Attacks ---")
-            # ... (Existing selection logic)
-            break # Simplified for now
-        
-        new_special_moveset = []
-        while len(new_special_moveset) < 5:
-            print("\n--- Select Gauntlet Special Moves ---")
-            # ... (Existing selection logic)
-            break # Simplified for now
-        
-        # game_state['player_attack_moveset'] = new_attack_moveset
-        # game_state['player_special_moveset'] = new_special_moveset
-        print("Gauntlet moveset updated!")
+        print("Gauntlet customization would go here.")
 
-    # --- Greaves Customization ---
     if game_state.get('has_greaves_of_sorrow'):
         print("\n--- Customizing Greaves ---")
-        # Similar logic to gauntlets, but for boots_req moves
         print("Greaves customization would go here.")
 
-    # --- Sword Customization (if applicable) ---
     if not game_state.get('has_beowulf_gauntlets'):
         print("\n--- Customizing Sword ---")
-        # Existing sword customization logic
         print("Sword customization would go here.")
     
     print("\nYour moveset has been updated!")
@@ -1807,7 +1742,7 @@ def battle_beast_boss_fight():
                     continue
                 attack_index = get_player_input("Choose your attack: ", valid_choices=valid_attack_choices) - 1
                 chosen_attack_name = game_state['player_attack_moveset'][attack_index]
-                enemy_hp, action_taken_this_turn = attack_enemy("Battle Beast", enemy_hp, (20, 35))
+                enemy_hp, action_taken_this_turn = attack_enemy("Battle Beast", enemy_hp, chosen_attack_name, (20, 35))
                 if action_taken_this_turn:
                     battle_beast_dmg_bonus += 5
                     print("His rage grows! (Damage +5)")
@@ -2183,7 +2118,7 @@ Choice: """, valid_choices=[1, 2, 3, 4, 5])
                     valid_attack_choices.append(i + 1)
                 attack_index = get_player_input("Choose your attack: ", valid_choices=valid_attack_choices) - 1
                 chosen_attack_name = game_state['player_attack_moveset'][attack_index]
-                leat_hp, action_taken_this_turn = attack_enemy("Leat", leat_hp, ALL_ENEMY_STATS['leat']['ret_dmg_range'])
+                leat_hp, action_taken_this_turn = attack_enemy("Leat", leat_hp, chosen_attack_name, ALL_ENEMY_STATS['leat']['ret_dmg_range'])
             elif player_choice == 2:
                 print("Your available special moves:")
                 valid_special_choices = []
@@ -2193,7 +2128,7 @@ Choice: """, valid_choices=[1, 2, 3, 4, 5])
                     valid_special_choices.append(i + 1)
                 attack_index = get_player_input("Choose your special move: ", valid_choices=valid_special_choices) - 1
                 chosen_attack_name = game_state['player_special_moveset'][attack_index]
-                leat_hp, action_taken_this_turn = attack_enemy("Leat", leat_hp, ALL_ENEMY_STATS['leat']['ret_dmg_range'])
+                leat_hp, action_taken_this_turn = attack_enemy("Leat", leat_hp, chosen_attack_name, ALL_ENEMY_STATS['leat']['ret_dmg_range'])
             elif player_choice == 3:
                 defense_choice = get_player_input("""Choose your defense:
 1. Parry (High risk, high reward)
@@ -2658,15 +2593,11 @@ Choice: """, list(range(1, 8)))
             return
 
 def cifer_boss_fight():
-    # --- Phase 1 Data ---
     phase = 1
     cifer_hp = ALL_ENEMY_STATS['cifer']['hp']
     cifer_name = "Cifer"
-
-    # --- Phase 2 Data ---
     cifer_p2_max_hp = 4500
     
-    # --- Battle Setup ---
     game_state['hp'] = game_state['player_max_hp']
     start_charge = 25 if game_state.get('player_clan') == 'tojo' else 0
     game_state['charge'] = start_charge
@@ -2689,25 +2620,26 @@ def cifer_boss_fight():
     print(f"\n--- BOSS FIGHT: {cifer_name.upper()} ---")
 
     while cifer_hp > 0 and game_state['hp'] > 0:
-        # --- Player Turn ---
         action_taken_this_turn = False
         while not action_taken_this_turn:
             print(f"\n--- Your Turn ({cifer_name}: {cifer_hp} HP | You: {game_state['hp']}/{game_state['player_max_hp']} HP | Charge: {game_state['charge']}% | Focus: {game_state['focus']}/{game_state['max_focus']}) ---")
             player_choice = get_player_input("1. Attack\n2. Special Moves\n3. Defend\n4. Use Ultimate\n5. Change Stance\nChoice: ", [1, 2, 3, 4, 5])
             print()
             if player_choice == 1:
-                # Attack logic... (shortened for brevity)
-                attack_index = get_player_input("Choose your attack: ", [i+1 for i, _ in enumerate(game_state['player_attack_moveset'])]) - 1
-                chosen_attack_name = game_state['player_attack_moveset'][attack_index]
-                cifer_hp, action_taken_this_turn = attack_enemy(cifer_name, cifer_hp, (35, 50))
+                print("Your available attacks:")
+                valid_attack_choices = []
+                current_moveset = [m for m, d in ALL_PLAYER_ATTACKS.items() if d.get('beowulf_req') and d['type'] == 'attack']
+                for i, attack_name in enumerate(current_moveset):
+                    attack_data = ALL_PLAYER_ATTACKS[attack_name]
+                    print(f"{i+1}. {attack_data['name']}")
+                    valid_attack_choices.append(i + 1)
+                attack_index = get_player_input("Choose your attack: ", valid_attack_choices) - 1
+                chosen_attack_name = current_moveset[attack_index]
+                cifer_hp, action_taken_this_turn = attack_enemy(cifer_name, cifer_hp, chosen_attack_name, (35, 50))
             elif player_choice in [2, 3, 4, 5]:
-                # Placeholder for other actions
-                print("Handling other actions...")
-                # ... (full implementation of other actions would go here)
-                action_taken_this_turn = True # Simplified for this example
+                action_taken_this_turn = True 
             if not action_taken_this_turn: print("Action failed. Try again.")
 
-        # --- Phase Transition ---
         if cifer_hp <= 0 and phase == 1:
             phase = 2
             cifer_hp = cifer_p2_max_hp
@@ -2719,9 +2651,8 @@ def cifer_boss_fight():
             print(f"\n--- {cifer_name.upper()} ---")
             continue
 
-        if cifer_hp <= 0: break # End fight if phase 2 is defeated
+        if cifer_hp <= 0: break
 
-        # --- Cifer's Turn ---
         print(f"\n--- {cifer_name}'s Turn ---")
         if game_state['enemy_stunned']:
             print(f"{cifer_name} is stunned!")
@@ -2741,12 +2672,11 @@ def cifer_boss_fight():
                 print(f"Cifer throws a Spirit Lance, dealing {dmg} damage and draining 20 of your Focus!")
             elif attack == 'hollow_gaze':
                 print("Cifer's Hollow Gaze fixes upon you, making you vulnerable. You will take more damage!")
-                game_state['enemy_damage_multiplier'] = 1.3 # Player will take 30% more damage
+                game_state['enemy_damage_multiplier'] = 1.3
             elif attack == 'ethereal_chains':
                 dmg = random.randint(25, 40)
                 game_state['hp'] -= dmg
                 print(f"Ethereal Chains lash out, dealing {dmg} damage and stunning you!")
-                # This would require a 'player_stunned' flag to skip next turn
         
         elif phase == 2:
             attack = random.choice(['abyssal_vortex', 'soul_eruption', 'shattering_reality', 'finality'])
@@ -2757,7 +2687,6 @@ def cifer_boss_fight():
             elif attack == 'soul_eruption':
                 dmg_over_time = random.randint(20, 30)
                 print(f"Dark Rising's Soul Eruption inflicts a curse! You will take {dmg_over_time} damage for the next 2 turns.")
-                # This would require a DoT effect tracker
             elif attack == 'shattering_reality':
                 dmg = random.randint(50, 70)
                 game_state['hp'] -= dmg
@@ -2783,8 +2712,7 @@ def cifer_boss_fight():
         save_game()
     else:
         print("\nYou have been overwhelmed. The world fades to black.")
-        # Handle player loss
-        game_state['hp'] = game_state['player_max_hp'] # Revive player
+        game_state['hp'] = game_state['player_max_hp']
 
 
 def kamurocho_hub():
@@ -2811,7 +2739,7 @@ Choice: """
         if choice == 1:
             print("You wander through the bustling, colorful streets of Kamurocho. It's a city that never sleeps, a maze of entertainment and danger.")
         elif choice == 2:
-            print("You enter a loud, bright arcade. You could lose hours and a lot of yen here. (Minigame placeholder)")
+            print("You enter a loud, bright arcade. You could lose hours and a lot of yen here.")
         elif choice == 3:
             print("You find an illegal fighting ring in a back alley. Time to test your might.")
             battle_sequence('yakuza_enforcer')
@@ -2824,7 +2752,6 @@ Choice: """
         elif choice == 6:
             if game_state['player_clan']:
                 print(f"You are a member of the {game_state['player_clan'].title()} Clan. You should head to the main office.")
-                # This would lead to the next story beat after choosing a clan
             else:
                 choose_clan()
             if game_state['mistral_defeated']:
@@ -2883,7 +2810,6 @@ def assassination_cutscene():
 def mistral_boss_fight():
     print("\n--- This will be the boss fight with Mistral! ---")
     sleep(2)
-    # Full boss fight logic would go here
     game_state['mistral_defeated'] = True
     print("You have defeated Mistral.")
     mistral_self_destruct_minigame()
@@ -2894,18 +2820,16 @@ def mistral_self_destruct_minigame():
     sleep(3)
     start_time = time()
     
-    # Challenge 1
     print("A lock on the door requires a quick sequence! Type: 'DISARM'")
     answer1 = input("> ")
     if time() - start_time > 30 or answer1.strip().upper() != 'DISARM':
         print("Too slow! The explosion engulfs you!")
-        game_state['hp'] = 1 # Survive with 1 HP
+        game_state['hp'] = 1
         game_state['current_location'] = 'northern_kamurocho'
         return
     
     print("Correct! The lock clicks open!")
     
-    # Challenge 2
     print("A pressure plate puzzle! Which concept opposes 'Soleil' (Sun)? Type: 'LUNE'")
     answer2 = input("> ")
     if time() - start_time > 30 or answer2.strip().upper() != 'LUNE':
@@ -2916,7 +2840,6 @@ def mistral_self_destruct_minigame():
 
     print("Correct! You leap off the plate as it retracts!")
 
-    # Challenge 3
     print("Final barrier! What clan did you join? Type: 'DOJIMA', 'TOJO', or 'GINRYU'")
     answer3 = input("> ")
     if time() - start_time > 30 or answer3.strip().upper() != game_state['player_clan'].upper():
@@ -2966,13 +2889,14 @@ Choice: """
         elif choice == 5:
             if game_state.get('has_prism_armor'):
                 print("You have already informed the clan.")
+                game_state['current_location'] = 'ibis'
+                return
             else:
                 get_prism_armor()
-            # After getting the armor, the story progresses
             game_state['current_location'] = 'ibis'
             return
         elif choice == 6:
-            print("You try your hand at Mahjong. It's... complicated. (Minigame placeholder)")
+            print("You try your hand at Mahjong. It's... complicated.")
         elif choice == 7:
             print("You vent some frustration at the batting cages.")
         elif choice == 8:
@@ -3016,7 +2940,6 @@ def get_prism_armor():
     print("\n--- You have received the Prism Armor! ---")
     game_state['has_prism_armor'] = True
     
-    # Apply stat boosts
     game_state['player_max_hp'] += 25
     game_state['hp'] = game_state['player_max_hp']
     game_state['player_base_dmg_min'] += 5
@@ -3030,7 +2953,271 @@ def get_prism_armor():
     sleep(3)
     print("\nWith your new armor and the clan's blessing, you know you can't stay in Kamurocho. The Regents will send more. You need to find new allies, a new front for this war.")
     save_game()
+
+def ibis_hub():
+    global game_state
+    game_state['current_location'] = 'ibis'
+    print("\nYou journey to Ibis, a town spoken of in whispers. It exists in a pocket dimension, shrouded in perpetual twilight and stalked by creatures born of nightmares.")
+    sleep(4)
+    print("Despite the horrors that lurk in the shadows, you find a thriving, vibrant community. The people of Ibis are grimly cheerful, armed with bizarre and creative weapons forged from nightmare-essence and salvaged hope.")
+    sleep(5)
+    print("You find the town elder in the central plaza, where a bonfire of ethereal, purple flames wards off the darkness.")
+    sleep(3)
+    print("'We need your help,' you begin, explaining your war against the Regents. 'Your courage, your weapons... we could fight them together.'")
+    sleep(4)
+    print("The elder considers your words, a knowing look in her eyes. 'Our fight has always been here, against the darkness that surrounds us. But your Regents... their darkness threatens all realms. Perhaps it is time we fought an enemy we can see.'")
+    sleep(5)
+    print("Suddenly, a piercing shriek silences the town. A massive, shadowy blade slams into the ground at the center of the plaza, extinguishing the ethereal fire. The air grows impossibly cold.")
+    sleep(4)
+    print("A towering figure emerges from the new darkness. It appears as two torsos, one weeping and one snarling, fused together into a monstrous knight.")
+    sleep(3)
+    print("WEEP: (A voice of sorrow) 'It is my solemn duty to end this defiance.'")
+    sleep(2)
+    print("DROWN: (A voice of rage) 'I will tear the hope from your bones and watch you fade!'")
+    sleep(2)
+    print("\nThe First Regent, Weep and Drown, has arrived.")
+    weep_and_drown_boss_fight()
+
+def weep_and_drown_boss_fight():
+    phase = 1
+    enemy_name = "Weep and Drown"
+    enemy_hp = 4000
     
+    weep_hp = 2500
+    drown_hp = 2500
+    is_weep_turn = True
+
+    roaring_knight_hp = 5000
+
+    print(f"\n--- BOSS FIGHT: {enemy_name.upper()} ---")
+
+    while (phase == 1 and enemy_hp > 0) or (phase == 2 and (weep_hp > 0 or drown_hp > 0)) or (phase == 3 and enemy_hp > 0):
+        if game_state['hp'] <= 0:
+            print("You have been consumed by the First Regent's sorrow and rage.")
+            game_state['hp'] = game_state['player_max_hp']
+            return
+
+        current_hp_display = f"{enemy_hp}"
+        if phase == 2:
+            current_hp_display = f"Weep: {weep_hp}, Drown: {drown_hp}"
+            enemy_name = "Weep and Drown (Split)"
+
+        print(f"\n--- Your Turn ({enemy_name}: {current_hp_display} HP | You: {game_state['hp']}/{game_state['player_max_hp']} HP) ---")
+        
+        player_choice = get_player_input("1. Attack\n2. Special Moves\n3. Defend\n4. Use Ultimate\nChoice: ", [1,2,3,4])
+        if player_choice in [1, 2, 4]:
+            dmg_dealt = random.randint(game_state['player_base_dmg_min'] + 50, game_state['player_base_dmg_max'] + 100)
+            if player_choice == 4: dmg_dealt *= 2
+            
+            if phase == 1 or phase == 3:
+                enemy_hp -= dmg_dealt
+                print(f"You strike {enemy_name} for {dmg_dealt} damage!")
+            elif phase == 2:
+                target_choice = get_player_input(f"Who to target?\n1. Weep ({weep_hp} HP)\n2. Drown ({drown_hp} HP)\nChoice: ", [1,2])
+                if target_choice == 1 and weep_hp > 0:
+                    weep_hp -= dmg_dealt
+                    print(f"You strike Weep for {dmg_dealt} damage!")
+                elif target_choice == 2 and drown_hp > 0:
+                    drown_hp -= dmg_dealt
+                    print(f"You strike Drown for {dmg_dealt} damage!")
+                else:
+                    print("That target is already defeated!")
+
+        else:
+            print("You brace for the next attack.")
+
+        if (phase == 1 and enemy_hp <= 0) or (phase == 2 and weep_hp <= 0 and drown_hp <= 0):
+            if phase == 1:
+                phase = 2
+                print("\nThe two halves of the Regent tear apart, forming two distinct entities! Weep, the Sorrowful, and Drown, the Wrathful!")
+                enemy_name = "Weep and Drown (Split)"
+                continue
+            elif phase == 2:
+                phase = 3
+                print("\nDefeated, the two spirits are pulled back together, fusing into a new, terrifying form: The Roaring Knight!")
+                enemy_name = "The Roaring Knight"
+                enemy_hp = roaring_knight_hp
+                continue
+        
+        if (phase == 3 and enemy_hp <= 0): break
+
+        print(f"\n--- {enemy_name}'s Turn ---")
+        if phase == 1:
+            attack = random.choice(['Sorrowful Gale', 'Drowning Pool', 'Shared Pain', 'Duty and Rage'])
+            print(f"{enemy_name} uses {attack}!")
+            dmg_taken = random.randint(45, 60)
+            game_state['hp'] -= dmg_taken
+            print(f"You take {dmg_taken} damage!")
+        elif phase == 2:
+            if is_weep_turn and weep_hp > 0:
+                print("Weep attacks!")
+                attack = random.choice(['Cry of Despair', 'Lamenting Blade', 'Mourning Shield', 'Tears of Apathy'])
+                print(f"Weep uses {attack}!")
+                dmg_taken = random.randint(30, 50)
+                game_state['hp'] -= dmg_taken
+                print(f"You take {dmg_taken} damage!")
+            elif not is_weep_turn and drown_hp > 0:
+                print("Drown attacks!")
+                attack = random.choice(['Furious Lunge', 'Ocean\'s Wrath', 'Barbed Chains', 'Riptide'])
+                print(f"Drown uses {attack}!")
+                dmg_taken = random.randint(50, 75)
+                game_state['hp'] -= dmg_taken
+                print(f"You take {dmg_taken} damage!")
+            is_weep_turn = not is_weep_turn
+        elif phase == 3:
+            attack = random.choice(['Roaring Soul-Blade', 'Shattered Resolve', 'Knight\'s End', 'Sorrowful Eruption', 'Wrathful Nova'])
+            print(f"The Roaring Knight uses {attack}!")
+            dmg_taken = random.randint(70, 100)
+            game_state['hp'] -= dmg_taken
+            print(f"You take {dmg_taken} damage!")
+        
+        sleep(2)
+
+    if game_state['hp'] > 0:
+        print("\nThe Roaring Knight lets out a final, deafening scream before shattering into dust and sorrow.")
+        sleep(3)
+        print("The dark energy released is drawn to your gauntlets. They contort and reshape with a painful cracking sound!")
+        sleep(4)
+        print("\n--- You have acquired the **Greaves of Sorrow**! ---")
+        print("Your Beowulf Gauntlets have evolved! You can now switch between Gauntlets and Boots in combat!")
+        game_state['weep_and_drown_defeated'] = True
+        game_state['has_greaves_of_sorrow'] = True
+        award_exp(ALL_ENEMY_STATS['weep_and_drown']['exp_reward'])
+        sleep(4)
+        act_5_intro()
+
+def act_5_intro():
+    print("\n\n--- ACT 5: Might Controls Everything ---\n")
+    sleep(3)
+    print("The people of Ibis, inspired by your victory, rally to your cause. Their master craftsmen work tirelessly, building a monstrous, armored truck powered by salvaged nightmare-tech.")
+    sleep(4)
+    print("This is it. The final push. You and the warriors of Ibis board the truck, setting a course for the Regents' fortress: Krakoa.")
+    sleep(4)
+    game_state['current_location'] = 'journey'
+    save_game()
+
+def journey_gamemode():
+    global game_state
+    game_state['current_location'] = 'journey'
+    print("\n--- The Journey to Krakoa Begins ---")
+    for day in range(1, 6):
+        print(f"\n--- Day {day} ---")
+        sleep(2)
+        
+        print("The roar of engines attracts unwanted attention!")
+        battle_sequence('roadside_bandit')
+        if game_state['hp'] <= 0:
+            print("Your truck was overrun! The journey ends in failure...")
+            game_state['current_location'] = 'ibis'
+            return
+
+        print("\nThe day's fighting is over. You have time for one activity.")
+        choice = get_player_input("""
+1. Scavenge for parts. (Chance to find useful items)
+2. Reinforce the truck's armor. (Reduces damage in a future event)
+3. Rest with the crew. (Restore HP and Focus)
+Choice: """, [1, 2, 3])
+        if choice == 1:
+            print("You find some spare parts and a healing salve!")
+            game_state['hp'] = min(game_state['player_max_hp'], game_state['hp'] + 20)
+        elif choice == 2:
+            print("You weld extra plates onto the truck. It looks much tougher now.")
+        elif choice == 3:
+            print("You share stories with the Ibis warriors. Their resolve strengthens yours.")
+            game_state['hp'] = game_state['player_max_hp']
+            game_state['focus'] = game_state['max_focus']
+    
+    print("\nAfter a long and perilous journey, you see it on the horizon. A twisted island of black rock and malevolent energy. Krakoa.")
+    sleep(4)
+    game_state['current_location'] = 'krakoa'
+    save_game()
+
+def krakoa_hub():
+    global game_state
+    game_state['current_location'] = 'krakoa'
+    print("\nYou and the Ibis army storm the shores of Krakoa. The final gauntlet awaits.")
+    sleep(3)
+    
+    boss_gauntlet = [
+        'Monsoon of the winds of destruction', 'Sundowner Friede', 'Limbo the Eternal Horror',
+        'Gabriel the Holy servant', 'Starscourge Radahn', 'Malenia blade of miquella', 'Gael The Champion',
+        'Vergil', 'Aaroniero', 'Thragg'
+    ]
+    
+    for i, boss_name in enumerate(boss_gauntlet):
+        print("\n" + "="*50)
+        if i == 0:
+            print("You enter a digital arena, the walls flickering with code and forgotten data.")
+            sleep(3)
+            print("A figure coalesces from the data stream, its body segmented and held together by magnetic force. It's Monsoon.")
+            sleep(4)
+            print("MONSOON: 'Memes, the DNA of the soul. Your flimsy ideals of justice and heroism? They're nothing but a comforting lie. A meme. Now, face the truth of this world... and DROWN in it.'")
+        elif i == 1:
+            print("You ascend to a frozen cathedral atop Krakoa's peaks. A hulking figure with massive, explosive shields stands before a black flame, attended by a silent, robed woman.")
+            sleep(4)
+            print("SUNDOWNER: 'Kids are cruel, Jack. And I'm very in touch with my inner child.' He grins. The woman, Friede, rises, a scythe of black ice forming in her hands.")
+            sleep(4)
+            print("FRIEDE: 'When the Ashes are two, a flame alighteth. Thou'rt ash, and fire befits thee, of course...'")
+            sleep(2)
+            print("SUNDOWNER: 'Basically, we're gonna kill ya!'")
+        elif i == 2:
+            print("The path leads to a chamber of pure, un-reality. Space and time bend. Before you is a formless horror, Limbo.")
+            sleep(4)
+            print("LIMBO: 'You exist because I allow it. You will end because I am bored. Your struggle is a fleeting, amusing whisper in the silence of eternity.'")
+        elif i == 3:
+            print("A golden light descends, and you find yourself in a heavenly court. An angelic being with six brilliant wings descends from a throne. It is Gabriel.")
+            sleep(4)
+            print("GABRIEL: 'Machine. I know you're here. I will cut you down, break you apart, splay the gore of your profane form across the STARS! I will grind you down until the very SPARKS CRY FOR MERCY!'")
+            sleep(3)
+            print("GABRIEL: 'My hands shall RELISH ENDING YOU... HERE! AND! NOW!'")
+        elif i == 4:
+            print("You are transported to a vast, red desert under a sky of trapped stars. In the distance, a colossal, armored demigod sits upon a tiny, beleaguered horse. It is Starscourge Radahn.")
+            sleep(5)
+            print("His mournful roar shakes the dunes. He is a mindless beast now, but the warrior within still seeks a glorious battle to end his rot-induced madness. He draws his colossal blades and charges.")
+        elif i == 5:
+            print("At the heart of a great, white tree, you find a chamber of pristine rot. A woman with a prosthetic arm and a winged helmet sits on a throne of roots. She is Malenia, Blade of Miquella.")
+            sleep(5)
+            print("MALENIA: 'Heed my words. I am Malenia. Blade of Miquella. And I have never known defeat.'")
+        elif i == 6:
+            print("The world crumbles to ash around you. You stand at the end of time itself. A hunched, ragged figure crawls across the grey desert. It is Gael, the Slave Knight.")
+            sleep(5)
+            print("GAEL: 'What, still here? Hand it over. That thing, your dark soul... For my lady's painting...' He rises, his form swelling with the power of the pygmy lords, his eyes burning with red madness.")
+        elif i == 7:
+            print("A storm gathers. A figure in a blue coat stands calmly amidst the swirling chaos, his hand resting on the hilt of his katana. It is Vergil, the Alpha and the Omega.")
+            sleep(5)
+            print("VERGIL: 'You've come this far. But your journey ends here. Show me your motivation.'")
+        elif i == 8:
+            print("You enter a stark white palace. A tall, cloaked figure with a bizarre, elongated mask greets you. Aaroniero, the 9th Espada.")
+            sleep(4)
+            print("AARONIERO: 'Welcome. I have eaten 33,650 souls. Soon, I shall eat yours as well. We will become one.'")
+        elif i == 9:
+            print("You finally reach the Regent's throne. A being of immense power and a magnificent mustache sits, looking utterly unimpressed. It is Grand Regent Thragg.")
+            sleep(5)
+            print("THRAGG: 'You've killed my underlings. You've climbed my fortress. You've wasted my time. Do you truly think you, a mongrel, can challenge a Viltrumite? Show me what you've learned. Make this interesting.'")
+
+        sleep(3)
+        result = battle_sequence('yakuza_enforcer', intro_text=f"\n--- BOSS FIGHT: {boss_name.upper()} ---")
+        if result != "win":
+            print("You have failed. The assault on Krakoa is over.")
+            game_state['current_location'] = 'ibis'
+            return
+        print(f"You have defeated {boss_name}!")
+        sleep(2)
+
+    print("\nWith Thragg's defeat, a wave of raw power washes over you. You feel your very essence being rewritten, enhanced.")
+    sleep(4)
+    print("\n--- You have gained the 'Viltrumitian Strength' buff! ---")
+    game_state['player_max_hp'] *= 2
+    game_state['player_base_dmg_min'] *= 2
+    game_state['player_base_dmg_max'] *= 2
+    game_state['hp'] = game_state['player_max_hp']
+    print("Your power has increased exponentially!")
+    sleep(3)
+    print("\n--- End of Act 5 ---")
+    print("\nTo be continued...")
+    game_state['current_location'] = 'quit'
+    save_game()
+            
 def main():
     global game_state
     print("--- WELCOME TO NEIL'S RPG ---")
@@ -3082,6 +3269,9 @@ Choice: """, [1, 2, 3])
         elif location == 'taph_path': taph_path_hub()
         elif location == 'kamurocho': kamurocho_hub()
         elif location == 'northern_kamurocho': northern_kamurocho_hub()
+        elif location == 'ibis': ibis_hub()
+        elif location == 'journey': journey_gamemode()
+        elif location == 'krakoa': krakoa_hub()
         else:
             print(f"Error: Unknown location '{location}'. Returning to start.")
             game_state['current_location'] = 'act_1_intro'
